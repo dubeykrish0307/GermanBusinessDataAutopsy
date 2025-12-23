@@ -116,7 +116,7 @@ HOW TO RUN THE PROJECT
 
 1. Clone the repository
 
-    git clone https://github.com/your-username/GermanBusinessDataAutopsy.git
+    git clone https://github.com/dubeykrish0307/GermanBusinessDataAutopsy.git
     cd GermanBusinessDataAutopsy
 
 2. Create a virtual environment (recommended)
