@@ -1,177 +1,97 @@
-# German Business Data Autopsy 🇩🇪
+# German Business Data Autopsy
 
-A business-focused analysis of German retail performance under inflation and energy cost pressure, built using official German and EU datasets.  
-This project goes beyond charts by translating economic data into clear, decision-relevant business insights.
-
----
-
-PROJECT MOTIVATION
-
-During inflationary periods, nominal revenue growth can be misleading.  
-Businesses may appear to grow on paper while real demand stagnates or declines and operating costs rise.
-
-This project answers a simple but critical question:
-
-Are German retail businesses genuinely growing, or is growth merely an inflation illusion?
-
-To answer this, the analysis combines:
-- Nominal vs real retail turnover
-- Business electricity cost indicators
-- A rule-based insight engine that mimics real analyst reasoning
+**Is German retail actually growing, or is it inflation?** This project puts official Destatis turnover data next to Eurostat business electricity prices and runs a small, transparent rule engine that turns the numbers into plain-English findings.
 
 ---
 
-DATA SOURCES
+## Findings
 
-Retail Turnover Data  
-Source: German Federal Statistical Office (Destatis)  
-Dataset: Retail trade turnover index (semi-annual)
+Turnover index for German motor trade and retail (Destatis 45212, 2015 = 100), second half of each year:
 
-Metrics used:
-- Nominal turnover (current prices)
-- Real turnover (inflation-adjusted)
+| | H2 2015 | H2 2020 | H2 2024 | Change 2015 → 2024 |
+|---|---|---|---|---|
+| Nominal turnover (current prices) | 103.2 | 129.5 | 149.3 | **+44.7 %** |
+| Real turnover (constant prices) | 103.2 | 122.3 | 117.8 | **+14.1 %** |
+| Gap (price effect, index points) | 0.0 | 7.2 | **31.5** | |
 
-Energy Cost Data  
-Source: Eurostat  
-Dataset: Electricity prices for non-household consumers  
-Purpose: Proxy for operating cost pressure on businesses
+- **Most of the "growth" since 2020 is prices.** Between H2 2020 and H2 2024 nominal turnover rose 15.3 % while real turnover *fell* 3.7 %.
+- **Energy costs rose at the same time.** Business electricity (Eurostat band IC, 500–2,000 MWh a year) went from €0.089 to €0.201 per kWh before taxes (+127 %), and from €0.218 to €0.283 with all taxes and levies (+30 %), H2 2020 → H2 2024.
+- **Two real demand shocks:** real turnover dropped 8.0 % year on year in H1 2021 and 14.6 % in H2 2021.
 
-All datasets used are official, public, and reproducible.
+### What the rule engine flags
 
----
+Run over the 9 half-years where both datasets overlap (H2 2020 – H2 2024), it produces 8 findings:
 
-METHODOLOGY OVERVIEW
+| Period | Finding |
+|---|---|
+| H2 2020 | Healthy growth: real demand up 6.4 % with low energy costs |
+| H1 2021, H2 2021 | Demand shock: real turnover down more than 5 % |
+| H1 2023 | Illusory growth: nominal up, real flat |
+| H2 2023, H1 2024 | Illusory growth **and** margin pressure: real sales slipping while electricity is above its period average |
 
-Step 1 — Data Cleaning & Structuring  
-- Parsed semi-annual time periods (S1, S2) into consistent datetime format  
-- Preserved raw indicators to ensure auditability  
-- Aggregated duplicate statistical observations correctly  
-
-Step 2 — Nominal vs Real Performance Analysis  
-- Compared nominal and real turnover to detect inflation-driven distortions  
-- Computed an inflation gap to quantify misleading growth  
-
-Step 3 — Cost Pressure Integration  
-- Cleaned and aggregated business electricity price indices  
-- Aligned energy costs with retail turnover timelines  
-- Ensured consistent time granularity across datasets  
-
-Step 4 — Rule-Based Insight Engine  
-Instead of stopping at visualizations, explicit business rules convert data into actionable insights:
-- Margin pressure risk
-- Illusory growth
-- Demand shocks
-- Healthy growth regimes
+Two flags in the same half-year mean the pressures stack up.
 
 ---
 
-RULE-BASED INSIGHT ENGINE (CORE FEATURE)
+## How it works
 
-The insight engine converts economic signals into plain-English business interpretations using transparent logic.
+```mermaid
+flowchart LR
+    A[Destatis 45212<br/>nominal + real turnover] --> C[Parse S1/S2 periods<br/>to dates]
+    B[Eurostat electricity prices<br/>non-household, Germany] --> C
+    C --> D[Year-on-year change<br/>+ inflation gap]
+    D --> E[Rule engine<br/>4 transparent rules]
+    E --> F[Plain-English findings]
+```
 
-Key rules include:
-- Margin pressure risk: real demand declines while energy costs are elevated
-- Illusory growth: nominal turnover rises but real turnover stagnates or falls
-- Demand shock: large year-over-year contraction in real activity
-- Healthy growth: real demand rises without significant cost pressure
+The four rules in `src/insight_engine.py`:
 
-This mirrors how consultants and analysts evaluate businesses in practice.
+| Rule | Fires when |
+|---|---|
+| Margin pressure | real YoY change < 0 **and** electricity price above its average |
+| Illusory growth | inflation gap above its average **and** real YoY change ≤ 0 |
+| Healthy growth | real YoY change > 3 % **and** electricity price at or below average |
+| Demand shock | real YoY change < −5 % |
 
----
-
-EXAMPLE OUTPUT
-
-Running the insight engine produces results such as:
-
-    2020-07-01: Healthy growth — real demand increased without significant cost pressure.
-    2021-01-01: Demand shock — significant contraction in real retail activity.
-    2023-07-01: Margin pressure risk — real sales declined while energy costs were elevated.
-    2023-07-01: Illusory growth — nominal turnover increased mainly due to price effects.
-
-Multiple insights for the same period indicate compounded business stress, not an error.
+**Why rules and not a model?** With 9 overlapping half-years there is nothing to train on honestly, and every flag can be traced back to a number a manager can check.
 
 ---
 
-REPOSITORY STRUCTURE
+## Run it
 
-    GermanBusinessDataAutopsy/
-    ├── data/
-    │   ├── raw/
-    │   │   ├── DESTATIS-45212BH002.csv
-    │   │   └── energy_prices_non_household.csv
-    │   └── processed/
-    │       └── energy_price_index.csv
-    ├── notebooks/
-    │   ├── 01_data_ingestion.ipynb
-    │   └── 02_energy_data_ingestion.ipynb
-    ├── src/
-    │   ├── __init__.py
-    │   └── insight_engine.py
-    ├── requirements.txt
-    └── README.md
+```bash
+git clone https://github.com/dubeykrish0307/GermanBusinessDataAutopsy.git
+cd GermanBusinessDataAutopsy
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt notebook
+jupyter notebook
+```
 
----
+Run `notebook/02_energy_data_ingestion.ipynb` first (it writes `Data/processed/energy_price_index.csv`), then `notebook/01_data_ingestion.ipynb`, which merges both datasets and runs the rule engine.
 
-HOW TO RUN THE PROJECT
+```
+Data/
+├── Raw/
+│   ├── DESTATIS-45212BH002 time series.csv
+│   └── energy_prices_non_household.csv
+└── processed/energy_price_index.csv
+notebook/
+├── 01_data_ingestion.ipynb
+└── 02_energy_data_ingestion.ipynb
+src/insight_engine.py
+```
 
-1. Clone the repository
-
-    git clone https://github.com/dubeykrish0307/GermanBusinessDataAutopsy.git
-    cd GermanBusinessDataAutopsy
-
-2. Create a virtual environment (recommended)
-
-    python -m venv venv
-    source venv/bin/activate      (macOS / Linux)
-    venv\Scripts\activate         (Windows)
-
-3. Install dependencies
-
-    pip install -r requirements.txt
-
-4. Run the notebooks in order
-
-    notebooks/02_energy_data_ingestion.ipynb
-    notebooks/01_data_ingestion.ipynb
-
-The second notebook merges datasets and runs the rule-based insight engine.
+**Sources:** [Destatis GENESIS table 45212](https://www-genesis.destatis.de/) (retail turnover, half-yearly) · [Eurostat nrg_pc_205](https://ec.europa.eu/eurostat/databrowser/view/nrg_pc_205/default/table) (electricity prices for non-household consumers)
 
 ---
 
-BUSINESS RELEVANCE
+## Known limitations and next steps
 
-This project demonstrates:
-- Why nominal growth alone is misleading
-- How inflation distorts perceived performance
-- How energy cost shocks amplify risk
-- Why explainable logic often beats black-box models
-
----
-
-WHY RULE-BASED INSTEAD OF MACHINE LEARNING
-
-The goal is interpretability, not raw prediction accuracy.  
-Business decisions require transparent logic that stakeholders can understand and challenge.
-
-Machine learning could be layered later, but only after understanding the economic fundamentals.
+- [ ] The notebooks read `../data/raw/…` but the folder is `Data/Raw/`. That works on macOS but fails on Linux and Colab. Rename the folders to lower case.
+- [ ] The electricity series is a price in €/kWh averaged across tax treatments and currency units (including purchasing-power standard), not an index. Pick one (before taxes is the cleanest cost signal) and rename the column.
+- [ ] The turnover series includes motor trade. Re-run on pure retail (WZ08-47), which is in the same Destatis file.
+- [ ] Add wage costs and a severity score for each flag.
 
 ---
 
-LIMITATIONS AND FUTURE WORK
-
-Limitations:
-- Aggregated national-level data
-- No firm-specific cost structures
-
-Future extensions:
-- Add labor or wage cost indices
-- Analyze retail sub-sectors separately
-- Introduce severity scoring for risk regimes
-- Evaluate predictive models on top of rule-based insights
-
----
-
-AUTHOR
-
-Developed by Krish  
-Bachelor’s student in Computer Science with a strong interest in data-driven business analysis and economic decision support.
+**Krish Dubey**, B.Sc. Computer Science student at SRH Munich · [LinkedIn](https://www.linkedin.com/in/dubeykrish) · [GitHub](https://github.com/dubeykrish0307)
