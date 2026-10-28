@@ -1,3 +1,6 @@
-# Python virtual environment
 development/
 .development/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
